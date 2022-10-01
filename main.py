@@ -41,11 +41,17 @@ with open(f"{os.getcwd()}/data.json","r") as file:
 
 def update():
     response = requests.get(f'https://api.weather.com/v1/location/{data["zip"]}:4:US/observations/current.json?language=en-US&units=e&apiKey=21d8a80b3d6b444998a80b3d6b1449d3').json()
+    temperature = response["observation"]["imperial"]["temp"]
+    wind = response["observation"]["imperial"]["wspd"]
+    dew = response["observation"]["imperial"]["dewpt"]
+    visibility = response["observation"]["imperial"]["vis"]
+    index = response["observation"]["uv_index"]
+    
     canvas.itemconfigure(temp, text=f'Temperature: {temperature}\u00b0F')
     canvas.itemconfigure(wspd, text=f'Wind Speed: {wind}mph')
     canvas.itemconfigure(dwpt, text=f'Dew Point: {dew}\u00b0')
     canvas.itemconfigure(vis, text=f'Visibility: {int(visibility)} miles')
-    canvas.itemconfigure(uv, text=f'UV Index: {index} ({indesc})')
+    canvas.itemconfigure(uv, text=f'UV Index: {index}')
     print("Forecast has been updated.")
     root.after(600000, update)
 
@@ -61,8 +67,7 @@ wind = response["observation"]["imperial"]["wspd"]
 dew = response["observation"]["imperial"]["dewpt"]
 visibility = response["observation"]["imperial"]["vis"]
 index = response["observation"]["uv_index"]
-indesc = response["observation"]["uv_desc"]
-high = response["observation"]["imperial"]['hi']
+high = response["observation"]["imperial"]['temp_max_24hour']
 low = response["observation"]["imperial"]['temp_min_24hour']
 description = response["observation"]["phrase_32char"]
 
@@ -88,7 +93,7 @@ else:
 
 temp = canvas.create_text(350, 50, text=f'Temperature: {temperature}\u00b0F', font=("STAR JR", 40), fill="white")
 dwpt = canvas.create_text(320, 100, text=f'Dew Point: {dew}\u00b0', font=("STAR JR", 40), fill="white")
-uv = canvas.create_text(795, 100, text=f'UV Index: {index} ({indesc})', font=("STAR JR", 40), fill="white")
+uv = canvas.create_text(860, 100, text=f'UV Index: {index}', font=("STAR JR", 40), fill="white")
 
 channels = canvas.create_text(395, 320, text=f'LOCAL CHANNELS', font=("VCR OSD Mono", 45), fill="white")
 
@@ -106,7 +111,7 @@ root.resizable(False, False)
 root.config(cursor="none")
 root.attributes('-fullscreen', True)
 
-marquee = Marquee(root, text=f'Current Conditions: {description}, with a current high of {high} and low of {low}.', margin=1, borderwidth=2, fps=120)
+marquee = Marquee(root, text=f'Current Conditions: {description}, with a forecasted high of {high} and low of {low}.', margin=1, borderwidth=2, fps=120)
 marquee.pack(side="bottom", fill="both")
 update()
 
