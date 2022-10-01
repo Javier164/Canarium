@@ -1,0 +1,27 @@
+{
+    "city": "Lowell",
+    "state": "MA",
+    "zip": "01850",
+    
+    "channels": [
+        {
+            "id": "2.1",
+            "name": "WGBH-DT1"
+        },
+
+        {
+            "id": "4.1",
+            "name": "WBZ-DT1"
+        },
+
+        {
+            "id": "5.1",
+            "name": "WCVB-DT1"
+        },
+
+        {
+            "id": "25.1",
+            "name": "WFXT-DT1"
+        }
+    ]
+}
