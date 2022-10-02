@@ -16,13 +16,19 @@ class Marquee(tkinter.Canvas):
 
         self.fps = fps
 
-        text = self.create_text(0, -1000, text=text, font=('STAR JR', 20, "bold"), fill="white", anchor="w", tags=("text"))
+        self.text = self.create_text(0, -1000, text=text, font=('STAR JR', 20, "bold"), fill="white", anchor="w", tags=("text"))
         (x0, y0, x1, y1) = self.bbox("text")
         width = (x1 - x0) + (2 * margin) + (2 * borderwidth)
         height = (y1 - y0) + (2 * margin) + (2 * borderwidth)
         self.configure(width=width, height=height, bg="#000055", highlightthickness=0)
 
         self.animate()
+        self.updateMarquee(f'Current Conditions: {description}, with a forecasted high of {high} and low of {low}.')
+        
+    def updateMarquee(self, text):
+        canvas.itemconfigure(self.text, text=text)
+        print("Marquee has been updated.")
+        root.after(600000,  self.updateMarquee, root)
 
     def animate(self):
         (x0, y0, x1, y1) = self.bbox("text")
@@ -39,7 +45,7 @@ class Marquee(tkinter.Canvas):
 with open(f"{os.getcwd()}/data.json","r") as file:
     data = json.load(file)
 
-def update():
+def updateData():
     response = requests.get(f'https://api.weather.com/v1/location/{data["zip"]}:4:US/observations/current.json?language=en-US&units=e&apiKey=21d8a80b3d6b444998a80b3d6b1449d3').json()
     temperature = response["observation"]["imperial"]["temp"]
     wind = response["observation"]["imperial"]["wspd"]
@@ -53,7 +59,7 @@ def update():
     canvas.itemconfigure(vis, text=f'Visibility: {int(visibility)} miles')
     canvas.itemconfigure(uv, text=f'UV Index: {index}')
     print("Forecast has been updated.")
-    root.after(600000, update)
+    root.after(600000, updateData)
 
 def clock():
     current = time.strftime("%I:%M:%S %p")
@@ -113,7 +119,7 @@ root.attributes('-fullscreen', True)
 
 marquee = Marquee(root, text=f'Current Conditions: {description}, with a forecasted high of {high} and low of {low}.', margin=1, borderwidth=2, fps=120)
 marquee.pack(side="bottom", fill="both")
-update()
+updateData()
 
 canvas.pack(fill="both", expand=True)
 root.mainloop()
