@@ -3,63 +3,39 @@ import requests
 import urllib.parse
 import json
 import time
+import textwrap
 
 import tkinter
+import pygame
 from tkinter import *
+from pygame import mixer
+from datetime import datetime
+from geopy.geocoders import Nominatim
+
+pygame.init()
 
 running = True
 day = 0
 
-class Marquee(tkinter.Canvas):
-    def __init__(self, parent, text, margin=0, borderwidth=1, fps=30):
-        super().__init__(parent, borderwidth=borderwidth)
-
-        self.fps = fps
-
-        self.text = self.create_text(0, -1000, text=text, font=('STAR JR', 20, "bold"), fill="white", anchor="w", tags=("text"))
-        (x0, y0, x1, y1) = self.bbox("text")
-        width = (x1 - x0) + (2 * margin) + (2 * borderwidth)
-        height = (y1 - y0) + (2 * margin) + (2 * borderwidth)
-        self.configure(width=width, height=height, bg="#000055", highlightthickness=0)
-
-        self.animate()
-        self.updateMarquee(f'Current Conditions: {description}, with a forecasted high of {high} and low of {low}.')
-        
-    def updateMarquee(self, text):
-        canvas.itemconfigure(self.text, text=text)
-        print("Marquee has been updated.")
-        root.after(600000,  self.updateMarquee, root)
-
-    def animate(self):
-        (x0, y0, x1, y1) = self.bbox("text")
-        if x1 < 0 or y0 < 0:
-            x0 = self.winfo_width()
-            y0 = int(self.winfo_height() / 2)
-            self.coords("text", x0, y0)
-            
-        else:
-            self.move("text", -1, 0)
-
-        self.after_id = self.after(int(1000 / self.fps), self.animate)
-
 with open(f"{os.getcwd()}/data.json","r") as file:
     data = json.load(file)
 
-def updateData():
+def wxupdate():
     response = requests.get(f'https://api.weather.com/v1/location/{data["zip"]}:4:US/observations/current.json?language=en-US&units=e&apiKey=21d8a80b3d6b444998a80b3d6b1449d3').json()
     temperature = response["observation"]["imperial"]["temp"]
     wind = response["observation"]["imperial"]["wspd"]
     dew = response["observation"]["imperial"]["dewpt"]
     visibility = response["observation"]["imperial"]["vis"]
     index = response["observation"]["uv_index"]
+    current = time.strftime("%I:%M:%S %p")
     
     canvas.itemconfigure(temp, text=f'Temperature: {temperature}\u00b0F')
     canvas.itemconfigure(wspd, text=f'Wind Speed: {wind}mph')
     canvas.itemconfigure(dwpt, text=f'Dew Point: {dew}\u00b0')
     canvas.itemconfigure(vis, text=f'Visibility: {int(visibility)} miles')
     canvas.itemconfigure(uv, text=f'UV Index: {index}')
-    print("Forecast has been updated.")
-    root.after(600000, updateData)
+    print(f"Forecast has been updated at {current}.")
+    root.after(600000, wxupdate)
 
 def clock():
     current = time.strftime("%I:%M:%S %p")
@@ -80,6 +56,10 @@ description = response["observation"]["phrase_32char"]
 root = tkinter.Tk()
 
 canvas = tkinter.Canvas(root, bg="#00007D", height=720, width=480, highlightthickness=0)
+location = Nominatim(user_agent="CanariumApp")
+locdata = location.geocode(f'{data["city"]}, {data["state"]}')
+wxforecast = requests.get(f"https://api.weather.com/v3/aggcommon/v3-wx-forecast-daily-5day?geocodes={locdata.latitude},{locdata.longitude}&language=en-US&units=e&format=json&apiKey=e1f10a1e78da46f5b10a1e78da96f525").json()
+foretext = textwrap.fill(wxforecast[0]["v3-wx-forecast-daily-5day"]["narrative"][0], width=25)
 
 if visibility != 1:
     if 10 > visibility > 1:
@@ -101,12 +81,17 @@ temp = canvas.create_text(350, 50, text=f'Temperature: {temperature}\u00b0F', fo
 dwpt = canvas.create_text(320, 100, text=f'Dew Point: {dew}\u00b0', font=("STAR JR", 40), fill="white")
 uv = canvas.create_text(860, 100, text=f'UV Index: {index}', font=("STAR JR", 40), fill="white")
 
-channels = canvas.create_text(395, 320, text=f'LOCAL CHANNELS', font=("VCR OSD Mono", 45), fill="white")
+channels = canvas.create_text(385, 320, text=f'LOCAL CHANNELS', font=("VCR OSD Mono", 45), fill="white")
 
 channel1 = canvas.create_text(300, 380, text=f'{data["channels"][0]["id"]} {data["channels"][0]["name"]}', font=("STAR JR", 40), fill="white")
 channel2 = canvas.create_text(620, 380, text=f'{data["channels"][1]["id"]} {data["channels"][1]["name"]}', font=("STAR JR", 40), fill="white")
 channel3 = canvas.create_text(300, 440, text=f'{data["channels"][2]["id"]} {data["channels"][2]["name"]}', font=("STAR JR", 40), fill="white")
 channel4 = canvas.create_text(640, 440, text=f'{data["channels"][3]["id"]} {data["channels"][3]["name"]}', font=("STAR JR", 40), fill="white")
+
+title = canvas.create_text(325, 535, text="TODAY'S FORECAST", font=("STAR JR", 35), fill="white")
+    
+desc = canvas.create_text(455, 635, text=foretext, font=("STAR JR", 35), fill="white")
+
 digital = Label(root, text="", font=("STAR JR", 40), fg="white", bg="#00007D")
 digital.place(x=720, y=18)
 clock()
@@ -117,9 +102,15 @@ root.resizable(False, False)
 root.config(cursor="none")
 root.attributes('-fullscreen', True)
 
-marquee = Marquee(root, text=f'Current Conditions: {description}, with a forecasted high of {high} and low of {low}.', margin=1, borderwidth=2, fps=120)
-marquee.pack(side="bottom", fill="both")
-updateData()
+wxupdate()
 
 canvas.pack(fill="both", expand=True)
+
+"""
+( ͡° ͜ʖ ͡°)
+
+mixer.music.load(f'{os.getcwd()}/assets/music/cafe.mp3')
+mixer.music.play(loops=1)
+"""
+
 root.mainloop()
