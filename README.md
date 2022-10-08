@@ -1,5 +1,2 @@
-# Canarium (BETA) ~90% done.
+# Canarium 1.0.1
 A weather app similar to probnot's wpg-weatherchan app.
-
-### TODOS
-- Background music.
