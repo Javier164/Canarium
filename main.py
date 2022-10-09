@@ -12,6 +12,12 @@ from geopy.geocoders import Nominatim
 from sys import platform
 from threading import Thread
 
+# JSON Background initial values
+"""
+"infobg": "#00007D",
+"marqueebg": "#000055"
+"""
+
 class Marquee(tkinter.Canvas):
     def __init__(self, parent, text, margin=0, borderwidth=1, fps=30):
         super().__init__(parent, borderwidth=borderwidth)
@@ -22,7 +28,7 @@ class Marquee(tkinter.Canvas):
         (x0, y0, x1, y1) = self.bbox("text")
         width = (x1 - x0) + (2 * margin) + (2 * borderwidth)
         height = (y1 - y0) + (2 * margin) + (2 * borderwidth)
-        self.configure(width=width, height=height, bg="#000055", highlightthickness=0)
+        self.configure(width=width, height=height, bg=data["marqueebg"], highlightthickness=0)
 
         self.animate()
 
@@ -69,7 +75,7 @@ description = response["observation"]["phrase_32char"]
 
 root = tkinter.Tk()
 
-canvas = tkinter.Canvas(root, bg="#00007D", height=720, width=480, highlightthickness=0)
+canvas = tkinter.Canvas(root, bg=data["infobg"], height=720, width=480, highlightthickness=0)
 location = Nominatim(user_agent="CanariumApp")
 locdata = location.geocode(f'{data["city"]}, {data["state"]}')
 wxforecast = requests.get(f"https://api.weather.com/v3/aggcommon/v3-wx-forecast-daily-5day?geocodes={locdata.latitude},{locdata.longitude}&language=en-US&units=e&format=json&apiKey=e1f10a1e78da46f5b10a1e78da96f525").json()
@@ -123,7 +129,7 @@ title = canvas.create_text(325, 505, text="TODAY'S FORECAST", font=("STAR JR", 3
 
 desc = canvas.create_text(435, 595, text=foretext, font=("STAR JR", 30), fill="white")
 
-digital = Label(root, text="", font=("STAR JR", 40), fg="white", bg="#00007D")
+digital = Label(root, text="", font=("STAR JR", 40), fg="white", bg=data["infobg"])
 digital.place(x=720, y=18)
 clock()
 

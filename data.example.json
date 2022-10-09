@@ -2,6 +2,8 @@
     "city": "Boston",
     "state": "MA",
     "zip": "01208",
+    "infobg": "#00007D",
+    "marqueebg": "#000055",
     
     "channels": [
         {
