@@ -1,16 +1,35 @@
-import os
+import os, sys
+import pygame
+import random
 import requests
 import urllib.parse
 import json
 import time
-import subprocess
 
 import textwrap
 import tkinter
 from tkinter import *
 from geopy.geocoders import Nominatim
 from sys import platform
-from threading import Thread
+
+directory = 'music'
+mp3 = [f for f in os.listdir(f"{os.getcwd()}/assets/{directory}") if f.endswith('.mp3')]
+pygame.mixer.pre_init(frequency=48000, size=-16, channels=2)
+pygame.init()
+
+def music():
+    current = []
+    if not pygame.mixer.music.get_busy():
+        if not current:
+           current = mp3[:]
+           random.shuffle(current)
+        song = current.pop(0)
+        pygame.mixer.music.load(os.path.join(f"{os.getcwd()}/assets/{directory}/", song))
+        for item in range(len(current)):
+            pygame.mixer.music.queue(os.path.join(f"{os.getcwd()}/assets/{directory}/", current[item]))
+ 
+        pygame.mixer.music.play()
+
 
 # JSON Background initial values
 """
@@ -44,13 +63,6 @@ class Marquee(tkinter.Canvas):
 
         self.after_id = self.after(int(1000 / self.fps), self.animate)
 
-def ExecMusic():
-    if platform == "linux" or platform == "linux2":
-        subprocess.Popen("python3 music.py", shell=True)
-    else:
-        subprocess.Popen("python music.py", shell=True)
-
-mp3 = Thread(target=ExecMusic())
 running = True
 day = 0
 
@@ -61,6 +73,12 @@ def clock():
     current = time.strftime("%I:%M:%S %p")
     digital.configure(text=current)
     root.after(1000, clock)
+    
+def KillProcesses():
+    pygame.mixer.music.stop()
+    pygame.mixer.music.unload()
+    root.destroy()
+    sys.exit()
 
 response = requests.get(f'https://api.weather.com/v1/location/{data["zip"]}:4:US/observations/current.json?language=en-US&units=e&apiKey=21d8a80b3d6b444998a80b3d6b1449d3').json()
 
@@ -98,7 +116,6 @@ def wxupdate():
     canvas.itemconfigure(uv, text=f'UV Index: {index}')
     print(f"Forecast has been updated at {current}.")
     root.after(600000, wxupdate)
-
 
 if visibility != 1:
     if 10 > visibility > 1:
@@ -147,6 +164,15 @@ marquee = Marquee(root, text="You are now watching america's #1 uninterrupted we
 marquee.pack(side="bottom", fill="both")
 
 canvas.pack(fill="both", expand=True)
+root.bind('<Escape>', lambda e: KillProcesses())
+root.protocol("WM_DELETE_WINDOW", lambda: KillProcesses())
 
-mp3.start()
-root.mainloop()
+run = True
+while run:
+    music()
+    root.mainloop()
+    pygame.time.Clock().tick(100)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+            break
