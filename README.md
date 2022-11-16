@@ -1,3 +1,3 @@
-# Canarium 1.1 
+# Canarium 2.0
 A weather app similar to probnot's wpg-weatherchan app.
-*With color customization!*
+*With color customization!* (now postponed)
