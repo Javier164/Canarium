@@ -1,3 +1,16 @@
+/+ 
+	Canarium: A simple weather app made in the D programming language. 
+	The appearance of the app takes inspiration from the WeatherStar 3000 
+	and WeatherStar JR systems used by The Weather Channel.
+
+	System Requirements:
+		Windows and Linux:
+		192 MB of RAM (for running and building the app, along with X11/Wayland).
+		512 MHz CPU, anything from the past 20-25 years should suffice.
+
+	Windows XP and higher is supported.
++/
+
 import std.file;
 import std.json;
 import std.conv;
@@ -15,6 +28,7 @@ import arsd.simpleaudio;
 import arsd.http2;
 import arsd.mp3;
 import arsd.rss;
+import arsd.dom;
 import arsd.ttf;
 
 JSONValue settings;
@@ -41,8 +55,9 @@ JSONValue downloadParseData(int mode = 0)
 		auto response = request.waitForCompletion();
 		JSONValue geo = parseJSON(response.contentText);
 
-		request = client.request(Uri(format("https://api.weather.com/v3/aggcommon/v3-wx-forecast-daily-5day?geocodes=%s,%s&language=en-US&units=e&format=json&apiKey=%s", geo[0]["lat"]
-				.str, geo[0]["lon"].str, settings["wkey"].str)));
+		request = client.request(Uri(format(
+				"https://api.weather.com/v3/aggcommon/v3-wx-forecast-daily-5day?geocodes=%s,%s&language=en-US&units=e&format=json&apiKey=%s", 
+				geo[0]["lat"].str, geo[0]["lon"].str, settings["wkey"].str)));
 		response = request.waitForCompletion();
 
 		return parseJSON(response.contentText);
@@ -55,12 +70,53 @@ RssChannel parseRSSFeed()
 	auto client = new HttpClient();
 	auto request = client.request(Uri(settings["feed"].str));
 	auto response = request.waitForCompletion();
+	if (response.code != 200)
+	{
+		final switch (response.code)
+		{
+		case 301:
+		case 302:
+			throw new Exception(
+				"Redirect. A common mistake would usually be your RSS URL using the HTTP protocol and not HTTPS. 
+				This may also mean your RSS isn't valid.");
+		case 400:
+		case 404:
+			throw new Exception(
+				"Client Error. Either your RSS URL doesn't exist, or is malformed.");
+		case 408:
+			throw new Exception(
+				"RSS Feed is probably down.");
+		case 500:
+			throw new Exception(
+				"The URL for the RSS feed is currently experiencing some sort of server error.");
+		}
+	}
 
-	return parseRss(to!string(response.contentText));
+	else
+	{
+		return parseRss(to!string(response.contentText));
+	}
+}
+
+@safe string clock()
+{
+	SysTime today = Clock.currTime();
+	return format("%02d:%02d:%02d %s", today.hour > 12 ? today.hour - 12 : today.hour, today.minute, today.second, today
+			.hour >= 12 ? "PM" : "AM");
 }
 
 void main()
 {
+	static DrawableFont StarJR, StarJRNarrative, StarJRHead, StarJRSS;
+
+	if (StarJRHead is null || StarJRNarrative is null || StarJR is null)
+	{
+		StarJR = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 34);
+		StarJRNarrative = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 28);
+		StarJRHead = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 58);
+		StarJRSS = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 22);
+	}
+
 	string[] musicbox()
 	{
 		string[] music;
@@ -90,17 +146,6 @@ void main()
 
 		RssItem[] news = parseRSSFeed().items;
 		settings = parseJSON(readText("config.json"));
-
-		static DrawableFont StarJR;
-		static DrawableFont StarJRNarrative;
-		static DrawableFont StarJRHead;
-
-		if (StarJRHead is null || StarJRNarrative is null || StarJR is null)
-		{
-			StarJR = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 34);
-			StarJRNarrative = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 26);
-			StarJRHead = arsdTtfFont(cast(ubyte[]) std.file.read("assets/fonts/StarJR.ttf"), 58);
-		}
 
 		painter.clear(Color(0, 0, 120));
 		painter.outlineColor = Color.white;
@@ -141,9 +186,8 @@ void main()
 			painter.fillColor = Color(0, 0, 120);
 			painter.outlineColor = Color.white;
 
-			painter.drawText(StarJRNarrative, point, txt);
+			painter.drawText(StarJRSS, point, txt);
 			point.y += StarJRNarrative.height();
-			point.y += 10;
 		}
 
 		header("Current Conditions");
@@ -166,36 +210,54 @@ void main()
 				.str));
 		text(format("%s %s", settings["channels"][3]["id"].str, settings["channels"][3]["name"]
 				.str));
-		header("Today's Top News Headline");
+		header("Today's Top News Article");
 		text(format("%s", news[0].title));
 
-		foreach (line; splitLines(wrap(news[0].description)))
+		foreach (line; splitLines(wrap(news[0].description, 100)))
 		{
-			rss(format("%s", line));
+			rss(htmlEntitiesDecode(to!string(line)));
 		}
 
 		writeln("Updated!");
 	}
 
-	void checkFinished()
+	void hms(SimpleWindow window)
 	{
-		if (sc.finished) 
+		auto painter = window.draw();
+		auto point = Point(475, 35);
+
+		void text(string txt)
+		{
+			painter.fillColor = Color(0, 0, 120);
+			painter.outlineColor = Color.white;
+
+			painter.drawText(StarJR, point, txt);
+		}
+
+		text(clock());
+	}
+
+	void music()
+	{
+		if (sc.finished)
 		{
 			if (list == null)
 			{
 				list = musicbox();
-			} else 
+			}
+			else
 			{
 				list = list.remove(0);
 			}
-			
+
 			sc = audio.playMp3(list[0]);
 		}
 	}
 
 	auto window = new SimpleWindow(960, 720, "Canarium");
 	auto timer = new Timer(600_000, delegate{ Draw(window); });
-	auto musicheck = new Timer(10_00, delegate{ checkFinished(); });
+	auto time = new Timer(10_00, delegate{ hms(window); });
+	auto musicheck = new Timer(10_00, delegate{ music(); });
 
 	window.maximize();
 	Draw(window);
