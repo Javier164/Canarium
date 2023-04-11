@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -46,13 +49,13 @@ func Text(renderer *sdl.Renderer, text, path string, size int, x, y int32, cente
 	renderer.Copy(texture, nil, rect)
 }
 
-func WordWrap(text string, width int) []string {
+func WordWrap(text string, width uint8) []string {
 	words := strings.Split(text, " ")
 	var lines []string
 	var line string
 
 	for _, word := range words {
-		if len(line)+len(word) <= width {
+		if len(line)+len(word) <= int(width) {
 			if line == "" {
 				line = word
 			} else {
@@ -75,4 +78,14 @@ func ParseHexColor(hex string) (uint8, uint8, uint8, error) {
 		return 0, 0, 0, fmt.Errorf("Failed to parse color string: %s", err)
 	}
 	return uint8(r), uint8(g), uint8(b), nil
+}
+
+func InterruptHandler() {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Println("Ctrl+C pressed. Exiting.")
+		os.Exit(0)
+	}()
 }
