@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -28,22 +26,22 @@ type Config struct {
 type Data struct {
 	Observation struct {
 		UV       byte   `json:"uv_index"`
-		Cover    string `json:"sky_cover"`
-		Phrase   string `json:"phrase_32char"`
+		Phrase   string `json:"phrase_12char"`
 		Desc     string `json:"uv_desc"`
 		Imperial struct {
-			Temp int16 `json:"temp"`
-			High int16 `json:"temp_max_24hour"`
-			Low  int8  `json:"temp_min_24hour"`
-			Dew  int8  `json:"dewpt"`
-			Wind uint8 `json:"wspd"`
+			Temp             int16 `json:"temp"`
+			High             int16 `json:"temp_max_24hour"`
+			Low              int8  `json:"temp_min_24hour"`
+			Dew              int8  `json:"dewpt"`
+			Wind             uint8 `json:"wspd"`
+			WindChill        int8  `json:"wc"`
+			RelativeHumidity int16 `json:"rh"`
 		} `json:"imperial"`
 	} `json:"observation"`
 }
 
 type CommonData struct {
 	MoonPhase []string `json:"moonPhase"`
-	Moonrise  []string `json:"moonriseTimeLocal"`
 	Narrative []string `json:"narrative"`
 	DayOfWeek []string `json:"dayOfWeek"`
 	Sunrise   []string `json:"sunriseTimeLocal"`
@@ -66,12 +64,13 @@ type Channel struct {
 }
 
 type RSS struct {
-	XMLName xml.Name `xml:"rss"`
-	Channel Channel  `xml:"channel"`
+	Channel Channel `xml:"channel"`
 }
 
 func main() {
-	file, err := ioutil.ReadFile("config.json")
+	InterruptHandler()
+
+	file, err := os.ReadFile("config.json")
 	if err != nil {
 		log.Fatalf("Failed to read configuration file: %s", err)
 	}
@@ -168,6 +167,30 @@ func main() {
 		queue[i], queue[j] = queue[j], queue[i]
 	})
 
+	/*
+
+		for id, val := range common[0].V3WxForecastDaily5Day.MoonPhase {
+			fmt.Printf("%d: %s\n", id, val)
+		}
+
+		for id, val := range common[0].V3WxForecastDaily5Day.Narrative {
+			fmt.Printf("%d: %s\n", id, val)
+		}
+
+		for id, val := range common[0].V3WxForecastDaily5Day.DayOfWeek {
+			fmt.Printf("%d: %s\n", id, val)
+		}
+
+		for id, val := range common[0].V3WxForecastDaily5Day.Sunrise {
+			fmt.Printf("%d: %s\n", id, val)
+		}
+
+		for id, val := range common[0].V3WxForecastDaily5Day.Sunset {
+			fmt.Printf("%d: %s\n", id, val)
+		}
+
+	*/
+
 	go func() {
 		for {
 			if mix.Playing(-1) == 0 {
@@ -234,6 +257,14 @@ func main() {
 								nid = 0
 							}
 
+							if common[0].V3WxForecastDaily5Day.Sunrise[nid] == "" ||
+								common[0].V3WxForecastDaily5Day.Sunset[nid] == "" ||
+								common[0].V3WxForecastDaily5Day.MoonPhase[nid] == "" ||
+								common[0].V3WxForecastDaily5Day.DayOfWeek[nid] == "" { // Checking if any of these are empty.
+								nid = nid + 1 // Skip on over to the next one.
+								continue
+							}
+
 							if rid > len(rss.Channel.Items)-1 {
 								rid = 0
 							}
@@ -242,6 +273,7 @@ func main() {
 							renderer.Clear()
 
 							Update(renderer, common, data, config, rss, nid, rid)
+
 							log.Printf("Updated!")
 						}
 					}
