@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"html"
+	"io"
 	"net/http"
+	"strings"
 )
 
 func ParseObservationData(config Config) (*Data, error) {
@@ -64,7 +67,17 @@ func ParseRSSFeed(config Config) (*RSS, error) {
 	defer resp.Body.Close()
 
 	var rss RSS
-	err = xml.NewDecoder(resp.Body).Decode(&rss)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	decoded := html.UnescapeString(string(body))
+	reader := io.NopCloser(strings.NewReader(decoded))
+	decoder := xml.NewDecoder(reader)
+	decoder.Strict = false // A lot of RSS feeds are notorious for having entities which are invalid. Turning this off just saves me the work.
+
+	err = decoder.Decode(&rss)
 	if err != nil {
 		return nil, err
 	}
